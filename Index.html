@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medins Dino-Tracker 🦕</title>
+    <style>
+        :root {
+            --baby-blue: #e3f2fd;
+            --dino-blue: #4dabf7;
+            --deep-blue: #1971c2;
+            --soft-white: #ffffff;
+            --dino-green: #8ce99a;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--baby-blue);
+            color: #444;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--soft-white);
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 20px;
+            border: 4px solid var(--dino-blue);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--deep-blue);
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .dino-header {
+            text-align: center;
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        /* Datum Navigation */
+        .date-picker-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--baby-blue);
+            padding: 10px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .date-nav-btn {
+            background: var(--deep-blue);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #currentDateDisplay {
+            font-weight: bold;
+            color: var(--deep-blue);
+        }
+
+        /* Eingabe-Bereich */
+        .input-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            border: 2px dashed var(--dino-blue);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        select, input {
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            flex: 1;
+        }
+
+        .add-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--dino-blue);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .add-btn:active { transform: scale(0.98); }
+
+        /* Liste der Einträge */
+        .entry-card {
+            background: white;
+            border-left: 5px solid var(--dino-blue);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .entry-info b { color: var(--deep-blue); }
+
+        .delete-btn {
+            background: #ff8787;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="dino-header">🦕🦖</div>
+    <h1>Medins Tracker</h1>
+    
+    <div class="date-picker-container">
+        <button class="date-nav-btn" onclick="changeDate(-1)">←</button>
+        <span id="currentDateDisplay"></span>
+        <button class="date-nav-btn" onclick="changeDate(1)">→</button>
+    </div>
+
+    <div class="input-section">
+        <div class="input-row">
+            <select id="category">
+                <option value="🍼 Trinken">🍼 Trinken (ml)</option>
+                <option value="😴 Schlafen">😴 Schlafen (Min)</option>
+                <option value="🌳 Spazieren">🌳 Spazieren (Min)</option>
+            </select>
+            <input type="time" id="entryTime">
+        </div>
+        <div class="input-row">
+            <input type="number" id="entryValue" placeholder="Menge / Dauer">
+            <button class="add-btn" onclick="addEntry()">Eintrag speichern 🦕</button>
+        </div>
+    </div>
+
+    <div id="entryList"></div>
+</div>
+
+<script>
+    let currentDate = new Date();
+    // Datenstruktur: { "YYYY-MM-DD": [ {id, category, time, value}, ... ] }
+    let allData = JSON.parse(localStorage.getItem('medinTrackerData')) || {};
+
+    function updateDisplay() {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        document.getElementById('currentDateDisplay').innerText = currentDate.toLocaleDateString('de-DE', { 
+            weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' 
+        });
+
+        const listContainer = document.getElementById('entryList');
+        listContainer.innerHTML = "";
+
+        const dayEntries = allData[dateKey] || [];
+        // Sortieren nach Uhrzeit
+        dayEntries.sort((a, b) => a.time.localeCompare(b.time));
+
+        if (dayEntries.length === 0) {
+            listContainer.innerHTML = '<p class="empty-msg">Noch keine Einträge für heute... 🦖</p>';
+        } else {
+            dayEntries.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = 'entry-card';
+                card.innerHTML = `
+                    <div class="entry-info">
+                        <b>${entry.time} Uhr</b><br>
+                        ${entry.category}: ${entry.value} ${entry.category.includes('Trinken') ? 'ml' : 'Min'}
+                    </div>
+                    <button class="delete-btn" onclick="deleteEntry('${dateKey}', ${entry.id})">Löschen</button>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+        // Zeit-Input auf aktuelle Uhrzeit setzen für neue Eingaben
+        if(!document.getElementById('entryTime').value) {
+            const now = new Date();
+            document.getElementById('entryTime').value = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        }
+    }
+
+    function addEntry() {
+        const category = document.getElementById('category').value;
+        const time = document.getElementById('entryTime').value;
+        const value = document.getElementById('entryValue').value;
+        const dateKey = currentDate.toISOString().split('T')[0];
+
+        if (!time || !value) {
+            alert("Bitte Zeit und Wert eingeben!");
+            return;
+        }
+
+        if (!allData[dateKey]) allData[dateKey] = [];
+        
+        const newEntry = {
+            id: Date.now(),
+            category,
+            time,
+            value
+        };
+
+        allData[dateKey].push(newEntry);
+        saveData();
+        document.getElementById('entryValue').value = "";
+        updateDisplay();
+    }
+
+    function deleteEntry(dateKey, id) {
+        allData[dateKey] = allData[dateKey].filter(e => e.id !== id);
+        saveData();
+        updateDisplay();
+    }
+
+    function changeDate(days) {
+        currentDate.setDate(currentDate.getDate() + days);
+        updateDisplay();
+    }
+
+    function saveData() {
+        localStorage.setItem('medinTrackerData', JSON.stringify(allData));
+    }
+
+    // Initialer Aufruf
+    updateDisplay();
+</script>
+
+</body>
+</html>
